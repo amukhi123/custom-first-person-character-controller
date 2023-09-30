@@ -18,13 +18,19 @@ public:
 
 private:
 	UPROPERTY(EditAnywhere, Category = "Input")
-	TObjectPtr<UInputMappingContext> m_InputMappingContext {};
+	TObjectPtr<UInputMappingContext> MInputMappingContext {};
 	
 	UPROPERTY(EditAnywhere, Category = "Input")
-	TObjectPtr<UInputAction> m_LookInputAction {};
+	TObjectPtr<UInputAction> MMoveInputAction {}; 
 	
 	UPROPERTY(EditAnywhere, Category = "Input")
-	TObjectPtr<UInputAction> m_MoveInputAction {}; 
+	TObjectPtr<UInputAction> MLookInputAction {};
+	
+	UPROPERTY(EditAnywhere, Category = "Input")
+	TObjectPtr<UInputAction> MSprintInputAction {};
+	
+	float MCurrentPlayerMovementSpeed {};	
+	
 	void BeginPlay() override;
 
 	void Tick(float DeltaTime) override;
@@ -33,5 +39,7 @@ private:
 	
 	void Move(const FInputActionValue& InputActionValue);	
 	
-	void Look(const FInputActionValue& InputActionValue);	
+	void Look(const FInputActionValue& InputActionValue);
+
+	void Sprint(const FInputActionValue& InputActionValue);
 };
