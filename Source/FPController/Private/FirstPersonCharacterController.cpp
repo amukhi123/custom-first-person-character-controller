@@ -40,7 +40,18 @@ void AFirstPersonCharacterController::SetupPlayerInputComponent(UInputComponent*
 
 void AFirstPersonCharacterController::Move(const FInputActionValue& InputActionValue)
 {
-	const FVector2d movementInput {InputActionValue.Get<FVector2d>()};
+	if (GetController())
+	{
+		const FVector2D movementInput {InputActionValue.Get<FVector2D>()};
+		
+		if (movementInput.X != 0)
+		{
+			AddMovementInput(GetActorForwardVector(), movementInput.X);
+		}
 
-	UE_LOG(LogTemp, Warning, TEXT("Moving"))
+		if (movementInput.Y != 0)
+		{
+			AddMovementInput(GetActorRightVector(), movementInput.Y);
+		}
+	}
 }
