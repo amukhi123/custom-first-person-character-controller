@@ -5,6 +5,9 @@
 #include "FirstPersonCharacterController.generated.h"
 
 class UInputComponent;
+class UInputMappingContext;
+class UInputAction;
+struct FInputActionValue;
 
 UCLASS()
 class FPCONTROLLER_API AFirstPersonCharacterController : public ACharacter
@@ -14,9 +17,16 @@ public:
 	AFirstPersonCharacterController();
 
 private:
+	UPROPERTY(EditAnywhere, Category="Input")
+	TObjectPtr<UInputMappingContext> m_InputMappingContext {};
+	
+	UPROPERTY(EditAnywhere, Category="Input")
+	TObjectPtr<UInputAction> m_MoveInputAction {}; 
 	void BeginPlay() override;
 
 	void Tick(float DeltaTime) override;
 
 	void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
+	
+	void Move(const FInputActionValue& InputActionValue);	
 };
