@@ -34,7 +34,15 @@ void AFirstPersonCharacterController::SetupPlayerInputComponent(UInputComponent*
 
 	if (TObjectPtr<UEnhancedInputComponent> enhancedInputComponent {CastChecked<UEnhancedInputComponent>(PlayerInputComponent)})
 	{
-		enhancedInputComponent->BindAction(m_MoveInputAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacterController::Move);
+		if (m_MoveInputAction)
+		{
+			enhancedInputComponent->BindAction(m_MoveInputAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacterController::Move);
+		}
+
+		if (m_LookInputAction)
+		{
+			enhancedInputComponent->BindAction(m_LookInputAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacterController::Look);
+		}
 	}
 }
 
@@ -55,3 +63,22 @@ void AFirstPersonCharacterController::Move(const FInputActionValue& InputActionV
 		}
 	}
 }
+
+void AFirstPersonCharacterController::Look(const FInputActionValue& InputActionValue)
+{
+	if (GetController())
+	{
+		const FVector2D rotationInput {InputActionValue.Get<FVector2D>()};
+
+		if (rotationInput.Y != 0)
+		{
+			AddControllerPitchInput(rotationInput.Y);
+		}
+		
+		if (rotationInput.X != 0)
+		{
+			AddControllerYawInput(rotationInput.X);
+		}
+	}
+}
+

@@ -17,10 +17,13 @@ public:
 	AFirstPersonCharacterController();
 
 private:
-	UPROPERTY(EditAnywhere, Category="Input")
+	UPROPERTY(EditAnywhere, Category = "Input")
 	TObjectPtr<UInputMappingContext> m_InputMappingContext {};
 	
-	UPROPERTY(EditAnywhere, Category="Input")
+	UPROPERTY(EditAnywhere, Category = "Input")
+	TObjectPtr<UInputAction> m_LookInputAction {};
+	
+	UPROPERTY(EditAnywhere, Category = "Input")
 	TObjectPtr<UInputAction> m_MoveInputAction {}; 
 	void BeginPlay() override;
 
@@ -29,4 +32,6 @@ private:
 	void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	
 	void Move(const FInputActionValue& InputActionValue);	
+	
+	void Look(const FInputActionValue& InputActionValue);	
 };
