@@ -29,7 +29,19 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	TObjectPtr<UInputAction> MSprintInputAction {};
 	
-	float MCurrentPlayerMovementSpeed {};	
+	UPROPERTY(EditAnywhere, Category = "Movement")
+	float MWalkSpeed {};
+	
+	UPROPERTY(EditAnywhere, Category = "Movement")
+	float MSprintSpeed {};
+	
+	UPROPERTY(EditAnywhere, Category = "Movement")
+	float MLookSensitivityX {};
+	
+	UPROPERTY(EditAnywhere, Category = "Movement")
+	float MPlayerLookSensitivityY {};
+	
+	TObjectPtr<UCharacterMovementComponent> MCharacterMovementComponent {};	
 	
 	void BeginPlay() override;
 

@@ -2,20 +2,23 @@
 #include "EnhancedInputSubsystems.h"
 #include "EnhancedInputComponent.h"
 #include "InputActionValue.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 namespace
 {
-	// The average walking speed is 5 km/h or 1.38889 m/s
-	constexpr float GPLAYER_MOVEMENT_SPEED {1.38889f};
-	// The average sprinting speed for a human male is 31.414395 km/h or 8.7262208 m/s	
-	constexpr float GPLAYER_RUNNING_SPEED {8.7262208f};
+	// The average walking speed is 5 km/h or 138.889 cm/s
+	constexpr float GPLAYER_WALK_SPEED {138.889f};
+	// The average sprinting speed for a human male is 31.414395 km/h or 872.62208 cm/s	
+	constexpr float GPLAYER_SPRINT_SPEED {872.62208f};
 	constexpr float GLOOK_SENSITIVITY_X {1.f};
 	constexpr float GLOOK_SENSITIVITY_Y {1.f};
 }
 
-AFirstPersonCharacterController::AFirstPersonCharacterController() : MInputMappingContext {}, MMoveInputAction {}, MSprintInputAction {}, MCurrentPlayerMovementSpeed {GPLAYER_MOVEMENT_SPEED}
+AFirstPersonCharacterController::AFirstPersonCharacterController() : MInputMappingContext {}, MMoveInputAction {}, MSprintInputAction {}, MCharacterMovementComponent {CastChecked<UCharacterMovementComponent>(GetMovementComponent())}, MWalkSpeed {GPLAYER_WALK_SPEED}, MSprintSpeed {GPLAYER_SPRINT_SPEED}, MLookSensitivityX {GLOOK_SENSITIVITY_X}, MPlayerLookSensitivityY {GLOOK_SENSITIVITY_Y}
 {
 	PrimaryActorTick.bCanEverTick = true;	
+	
+	MCharacterMovementComponent->MaxWalkSpeed = GPLAYER_WALK_SPEED;	
 }
 
 void AFirstPersonCharacterController::BeginPlay()
@@ -36,6 +39,8 @@ void AFirstPersonCharacterController::BeginPlay()
 
 void AFirstPersonCharacterController::Tick(float DeltaTime)
 {
+	MCharacterMovementComponent->VisualizeMovement();
+	UE_LOG(LogTemp, Warning, TEXT("%f"), MCharacterMovementComponent->MaxWalkSpeed)
 }
 
 void AFirstPersonCharacterController::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -56,7 +61,7 @@ void AFirstPersonCharacterController::SetupPlayerInputComponent(UInputComponent*
 		
 		if (MSprintInputAction)
 		{
-			enhancedInputComponent->BindAction(MSprintInputAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacterController::Sprint);
+			enhancedInputComponent->BindAction(MSprintInputAction, ETriggerEvent::Started, this, &AFirstPersonCharacterController::Sprint);
 		}
 	}
 }
@@ -69,12 +74,12 @@ void AFirstPersonCharacterController::Move(const FInputActionValue& InputActionV
 		
 		if (movementInput.X != 0)
 		{
-			AddMovementInput(GetActorForwardVector(), movementInput.X * MCurrentPlayerMovementSpeed);
+			AddMovementInput(GetActorForwardVector(), movementInput.X);
 		}
 
 		if (movementInput.Y != 0)
 		{
-			AddMovementInput(GetActorRightVector(), movementInput.Y * MCurrentPlayerMovementSpeed);
+			AddMovementInput(GetActorRightVector(), movementInput.Y);
 		}
 	}
 }
@@ -101,13 +106,13 @@ void AFirstPersonCharacterController::Sprint(const FInputActionValue& InputActio
 {
 	if (InputActionValue.Get<bool>())
 	{
-		if (MCurrentPlayerMovementSpeed == GPLAYER_RUNNING_SPEED)
+		if (MCharacterMovementComponent->MaxWalkSpeed == MSprintSpeed)
 		{
-			MCurrentPlayerMovementSpeed = GPLAYER_MOVEMENT_SPEED;
+			MCharacterMovementComponent->MaxWalkSpeed = MWalkSpeed;
 		}
 		else
 		{
-			MCurrentPlayerMovementSpeed = GPLAYER_RUNNING_SPEED;
+			MCharacterMovementComponent->MaxWalkSpeed = MSprintSpeed;
 		}
 	}
 }
