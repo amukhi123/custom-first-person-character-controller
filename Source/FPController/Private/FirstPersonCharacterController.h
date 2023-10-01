@@ -1,12 +1,15 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
+#include "InputActionValue.h"
 #include "Gameframework/Character.h"
 #include "FirstPersonCharacterController.generated.h"
 
 class UInputComponent;
 class UInputMappingContext;
 class UInputAction;
+class UCameraComponent;
+
 struct FInputActionValue;
 
 UCLASS()
@@ -39,9 +42,23 @@ private:
 	float MLookSensitivityX {};
 	
 	UPROPERTY(EditAnywhere, Category = "Movement")
-	float MPlayerLookSensitivityY {};
+	float MLookSensitivityY {};
+	
+	UPROPERTY(EditAnywhere, Category = "Head Bob")
+	float MHeadBobFrequency {};
+
+	UPROPERTY(EditAnywhere, Category = "Head Bob")
+	float MHeadBobAmplitude {};
 	
 	TObjectPtr<UCharacterMovementComponent> MCharacterMovementComponent {};	
+
+	UPROPERTY(EditAnywhere, Category = "Camera")
+	TObjectPtr<UCameraComponent> MCameraComponent {};	
+	
+	UPROPERTY(EditAnywhere, Category = "Camera")
+	float MEyesOffset {};
+	
+	bool bIsSprinting {};	
 	
 	void BeginPlay() override;
 
@@ -49,9 +66,15 @@ private:
 
 	void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	
-	void Move(const FInputActionValue& InputActionValue);	
+	void ActivateMovement(const FInputActionValue& InputActionValue);	
+	
+	void ActivateSprint(const FInputActionValue& InputActionValue);	
 	
 	void Look(const FInputActionValue& InputActionValue);
+	
+	void DeactivateWalk();
+	
+	void DeactivateSprint();
 
-	void Sprint(const FInputActionValue& InputActionValue);
+	void HeadBob();
 };
