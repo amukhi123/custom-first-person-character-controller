@@ -26,7 +26,8 @@ private:
 		Idle,
 		Crouch,
 		Walk,
-		Sprint
+		Sprint,
+		Jump
 	};
 	
 	UPROPERTY(EditAnywhere, Category = "Input")
@@ -43,6 +44,9 @@ private:
 	
 	UPROPERTY(EditAnywhere, Category = "Input")
 	TObjectPtr<UInputAction> MCrouchInputAction {};
+	
+	UPROPERTY(EditAnywhere, Category = "Input")
+	TObjectPtr<UInputAction> MJumpInputAction {};
 	
 	UPROPERTY(EditAnywhere, Category = "Movement")
 	float MWalkSpeed {};
@@ -91,6 +95,8 @@ private:
 	void ActivateSprint(const FInputActionValue& InputActionValue);	
 	
 	void ActivateCrouch(const FInputActionValue& InputActionValue);	
+	
+	void ActivateJump(const FInputActionValue& InInputActionValue);	
 	
 	void Look(const FInputActionValue& InputActionValue);
 	

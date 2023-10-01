@@ -97,6 +97,12 @@ void AFirstPersonCharacterController::SetupPlayerInputComponent(UInputComponent*
 			enhancedInputComponent->BindAction(MCrouchInputAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacterController::ActivateCrouch);
 			enhancedInputComponent->BindAction(MCrouchInputAction, ETriggerEvent::Completed, this, &AFirstPersonCharacterController::DeactivateCrouch);
 		}
+		
+		if (MJumpInputAction)
+		{
+			enhancedInputComponent->BindAction(MJumpInputAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacterController::ActivateJump);
+			enhancedInputComponent->BindAction(MJumpInputAction, ETriggerEvent::Completed, this, &AFirstPersonCharacterController::DeactivateMovement);
+		}
 	}
 }
 
@@ -163,6 +169,16 @@ void AFirstPersonCharacterController::ActivateCrouch(const FInputActionValue& In
 	}
 }
 
+void AFirstPersonCharacterController::ActivateJump(const FInputActionValue& InInputActionValue)
+{
+	if (InInputActionValue.Get<bool>())
+	{
+		ECurrentPlayerState = EPlayerState::Jump;
+		
+		Jump();
+	}
+}
+
 void AFirstPersonCharacterController::Look(const FInputActionValue& InputActionValue)
 {
 	if (GetController())
@@ -215,5 +231,5 @@ void AFirstPersonCharacterController::AdjustPlayerHeight(const float& InNewHeigh
 	
 	const FVector3d eyesPosition {0.0, 0.0, MCameraComponent->GetComponentLocation().Z + capsuleHalfHeight + MEyesOffset};
 	
-	MCameraComponent->SetRelativeLocation(eyesPosition);	
+	MCameraComponent->SetRelativeLocation(eyesPosition);
 }
