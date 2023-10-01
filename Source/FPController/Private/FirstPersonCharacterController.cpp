@@ -21,13 +21,14 @@ namespace
 	// Look	
 	constexpr float GLOOK_SENSITIVITY_X {1.f};
 	constexpr float GLOOK_SENSITIVITY_Y {1.f};
+	constexpr float GEYES_DEFAULT_HEIGHT {160.f};	
 	
 	// Head Bob	
 	constexpr float GHEAD_BOB_AMPLITUDE {5.f};
 	constexpr float GHEAD_BOB_FREQUENCY {.025f};
 }
 
-AFirstPersonCharacterController::AFirstPersonCharacterController() : MInputMappingContext {nullptr}, MMoveInputAction {nullptr}, MSprintInputAction {nullptr}, MWalkSpeed {GWALK_SPEED}, MSprintSpeed {GSPRINT_SPEED}, MLookSensitivityX {GLOOK_SENSITIVITY_X}, MLookSensitivityY {GLOOK_SENSITIVITY_Y}, MHeadBobFrequency {GHEAD_BOB_FREQUENCY}, MHeadBobAmplitude {GHEAD_BOB_AMPLITUDE}, MCharacterMovementComponent {CastChecked<UCharacterMovementComponent>(GetMovementComponent())}, MCameraComponent {CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"))}, MEyesOffset {0.f}, bIsSprinting {false}
+AFirstPersonCharacterController::AFirstPersonCharacterController() : MInputMappingContext {nullptr}, MMoveInputAction {nullptr}, MSprintInputAction {nullptr}, MWalkSpeed {GWALK_SPEED}, MSprintSpeed {GSPRINT_SPEED}, MLookSensitivityX {GLOOK_SENSITIVITY_X}, MLookSensitivityY {GLOOK_SENSITIVITY_Y}, MHeadBobFrequency {GHEAD_BOB_FREQUENCY}, MHeadBobAmplitude {GHEAD_BOB_AMPLITUDE}, MCharacterMovementComponent {CastChecked<UCharacterMovementComponent>(GetMovementComponent())}, MCameraComponent {CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"))}, MEyesOffset {}, bIsSprinting {false}
 {
 	PrimaryActorTick.bCanEverTick = true;	
 	
@@ -37,6 +38,8 @@ AFirstPersonCharacterController::AFirstPersonCharacterController() : MInputMappi
 
 	MCameraComponent->SetupAttachment(GetRootComponent());
 	MCameraComponent->bUsePawnControlRotation = true;
+	
+	GetCapsuleComponent()->SetCapsuleHalfHeight(GEYES_DEFAULT_HEIGHT);	
 	
 	const float	capsuleHalfHeight {GetCapsuleComponent()->GetScaledCapsuleHalfHeight()};
 	
