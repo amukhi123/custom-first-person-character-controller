@@ -11,11 +11,11 @@
 ## Controls
 
 WASD - Movement
-Mouse - Look
-Left Shift - Sprint
-Space Bar - Jump
-Left Control - Crouch
-E - Vault
+<br>Mouse - Look
+<br>Left Shift - Sprint
+<br>Space Bar - Jump
+<br>Left Control - Crouch
+<br>E - Vault
 
 ## Gallery
 
@@ -27,7 +27,7 @@ Video coming soon.
 2. Open repository in Unreal Engine:
    1. Double-click on the FPController.uproject file OR
    2. Right-click the FPController.uproject file, select "Generate Visual Studio project files", open the .sln file and build the project
-3. Navigate to Content/Blueprint/"BP_FPController"
+3. Navigate to Content/Blueprint/BP_FPController
 4. Right-click AssetActions -> Migrate...
 5. In the file explorer navigate to the Content folder of your project and click "Select Folder"
 
