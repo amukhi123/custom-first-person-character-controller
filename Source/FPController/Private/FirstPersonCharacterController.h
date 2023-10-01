@@ -9,6 +9,7 @@ class UInputComponent;
 class UInputMappingContext;
 class UInputAction;
 class UCameraComponent;
+class UCapsuleComponent;
 
 struct FInputActionValue;
 
@@ -20,6 +21,14 @@ public:
 	AFirstPersonCharacterController();
 
 private:
+	enum class EPlayerState
+	{
+		Idle,
+		Crouch,
+		Walk,
+		Sprint
+	};
+	
 	UPROPERTY(EditAnywhere, Category = "Input")
 	TObjectPtr<UInputMappingContext> MInputMappingContext {};
 	
@@ -32,11 +41,20 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Input")
 	TObjectPtr<UInputAction> MSprintInputAction {};
 	
+	UPROPERTY(EditAnywhere, Category = "Input")
+	TObjectPtr<UInputAction> MCrouchInputAction {};
+	
 	UPROPERTY(EditAnywhere, Category = "Movement")
 	float MWalkSpeed {};
 	
 	UPROPERTY(EditAnywhere, Category = "Movement")
 	float MSprintSpeed {};
+	
+	UPROPERTY(EditAnywhere, Category = "Movement")
+	float MCrouchSpeed {};
+	
+	UPROPERTY(EditAnywhere, Category = "Movement")
+	float MCrouchHeight {};
 	
 	UPROPERTY(EditAnywhere, Category = "Movement")
 	float MLookSensitivityX {};
@@ -50,15 +68,17 @@ private:
 	UPROPERTY(EditAnywhere, Category = "Head Bob")
 	float MHeadBobAmplitude {};
 	
-	TObjectPtr<UCharacterMovementComponent> MCharacterMovementComponent {};	
-
 	UPROPERTY(EditAnywhere, Category = "Camera")
 	TObjectPtr<UCameraComponent> MCameraComponent {};	
 	
 	UPROPERTY(EditAnywhere, Category = "Camera")
 	float MEyesOffset {};
 	
-	bool bIsSprinting {};	
+	TObjectPtr<UCharacterMovementComponent> MCharacterMovementComponent {};	
+	
+	TObjectPtr<UCapsuleComponent> MCapsuleComponent {};	
+
+	EPlayerState ECurrentPlayerState {};	
 	
 	void BeginPlay() override;
 
@@ -66,15 +86,19 @@ private:
 
 	void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	
-	void ActivateMovement(const FInputActionValue& InputActionValue);	
+	void ActivateWalk(const FInputActionValue& InputActionValue);	
 	
 	void ActivateSprint(const FInputActionValue& InputActionValue);	
 	
+	void ActivateCrouch(const FInputActionValue& InputActionValue);	
+	
 	void Look(const FInputActionValue& InputActionValue);
 	
-	void DeactivateWalk();
-	
-	void DeactivateSprint();
+	void DeactivateMovement();
 
-	void HeadBob();
+	void DeactivateCrouch();
+	
+	void HeadBob() const;
+	
+	void AdjustPlayerHeight(const float& InNewHeight) const;
 };

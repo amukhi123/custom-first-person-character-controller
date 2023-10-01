@@ -15,8 +15,10 @@ namespace
 	constexpr float GWALK_SPEED {138.889f};
 	// The average sprinting speed for a human male is 31.414395 km/h or 872.62208 cm/s	
 	constexpr float GSPRINT_SPEED {872.62208f};
+	// Crouch walking is 62.5% slower than walking on average
+	constexpr float GCROUCH_SPEED {52.083375f};
 	// Used for head bobbing when idle	
-	constexpr float GIDLE_SPEED {75.f};
+	constexpr float GIDLE_SPEED {30.f};
 	
 	// Look	
 	constexpr float GLOOK_SENSITIVITY_X {1.f};
@@ -26,9 +28,12 @@ namespace
 	// Head Bob	
 	constexpr float GHEAD_BOB_AMPLITUDE {5.f};
 	constexpr float GHEAD_BOB_FREQUENCY {.025f};
+	
+	// Crouch
+	constexpr float GCROUCH_HEIGHT {GEYES_DEFAULT_HEIGHT / 2};
 }
 
-AFirstPersonCharacterController::AFirstPersonCharacterController() : MInputMappingContext {nullptr}, MMoveInputAction {nullptr}, MSprintInputAction {nullptr}, MWalkSpeed {GWALK_SPEED}, MSprintSpeed {GSPRINT_SPEED}, MLookSensitivityX {GLOOK_SENSITIVITY_X}, MLookSensitivityY {GLOOK_SENSITIVITY_Y}, MHeadBobFrequency {GHEAD_BOB_FREQUENCY}, MHeadBobAmplitude {GHEAD_BOB_AMPLITUDE}, MCharacterMovementComponent {CastChecked<UCharacterMovementComponent>(GetMovementComponent())}, MCameraComponent {CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"))}, MEyesOffset {}, bIsSprinting {false}
+AFirstPersonCharacterController::AFirstPersonCharacterController() : MInputMappingContext {nullptr}, MMoveInputAction {nullptr}, MSprintInputAction {nullptr}, MCrouchInputAction {nullptr}, MWalkSpeed {GWALK_SPEED}, MSprintSpeed {GSPRINT_SPEED}, MCrouchSpeed {GCROUCH_SPEED}, MCrouchHeight {GCROUCH_HEIGHT}, MLookSensitivityX {GLOOK_SENSITIVITY_X}, MLookSensitivityY {GLOOK_SENSITIVITY_Y}, MHeadBobFrequency {GHEAD_BOB_FREQUENCY}, MHeadBobAmplitude {GHEAD_BOB_AMPLITUDE}, MCameraComponent {CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"))}, MEyesOffset {}, ECurrentPlayerState {EPlayerState::Idle}, MCharacterMovementComponent {CastChecked<UCharacterMovementComponent>(GetMovementComponent())}, MCapsuleComponent {GetCapsuleComponent()}
 {
 	PrimaryActorTick.bCanEverTick = true;	
 	
@@ -39,13 +44,7 @@ AFirstPersonCharacterController::AFirstPersonCharacterController() : MInputMappi
 	MCameraComponent->SetupAttachment(GetRootComponent());
 	MCameraComponent->bUsePawnControlRotation = true;
 	
-	GetCapsuleComponent()->SetCapsuleHalfHeight(GEYES_DEFAULT_HEIGHT);	
-	
-	const float	capsuleHalfHeight {GetCapsuleComponent()->GetScaledCapsuleHalfHeight()};
-	
-	const FVector3d eyesPosition {0.0, 0.0, MCameraComponent->GetComponentLocation().Z + capsuleHalfHeight + MEyesOffset};
-	
-	MCameraComponent->SetRelativeLocation(eyesPosition);	
+	AdjustPlayerHeight(GEYES_DEFAULT_HEIGHT);
 	
 	MCharacterMovementComponent->MaxWalkSpeed = GWALK_SPEED;	
 }
@@ -79,7 +78,7 @@ void AFirstPersonCharacterController::SetupPlayerInputComponent(UInputComponent*
 	{
 		if (MMoveInputAction)
 		{
-			enhancedInputComponent->BindAction(MMoveInputAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacterController::ActivateMovement);			enhancedInputComponent->BindAction(MMoveInputAction, ETriggerEvent::Completed, this, &AFirstPersonCharacterController::DeactivateWalk);
+			enhancedInputComponent->BindAction(MMoveInputAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacterController::ActivateWalk);			enhancedInputComponent->BindAction(MMoveInputAction, ETriggerEvent::Completed, this, &AFirstPersonCharacterController::DeactivateMovement);
 		}
 
 		if (MLookInputAction)
@@ -90,24 +89,38 @@ void AFirstPersonCharacterController::SetupPlayerInputComponent(UInputComponent*
 		if (MSprintInputAction)
 		{
 			enhancedInputComponent->BindAction(MSprintInputAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacterController::ActivateSprint);
-			enhancedInputComponent->BindAction(MSprintInputAction, ETriggerEvent::Completed, this, &AFirstPersonCharacterController::DeactivateSprint);
+			enhancedInputComponent->BindAction(MSprintInputAction, ETriggerEvent::Completed, this, &AFirstPersonCharacterController::DeactivateMovement);
+		}
+
+		if (MCrouchInputAction)
+		{
+			enhancedInputComponent->BindAction(MCrouchInputAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacterController::ActivateCrouch);
+			enhancedInputComponent->BindAction(MCrouchInputAction, ETriggerEvent::Completed, this, &AFirstPersonCharacterController::DeactivateCrouch);
 		}
 	}
 }
 
-void AFirstPersonCharacterController::ActivateMovement(const FInputActionValue& InputActionValue)
+void AFirstPersonCharacterController::ActivateWalk(const FInputActionValue& InputActionValue)
 {
 	if (GetController() && InputActionValue.GetValueType() == EInputActionValueType::Axis2D)
 	{
-		if (bIsSprinting)
+		switch (ECurrentPlayerState)
 		{
-			MCharacterMovementComponent->MaxWalkSpeed = MSprintSpeed;
+			case EPlayerState::Crouch:
+				MCharacterMovementComponent->MaxWalkSpeed = MCrouchSpeed;
+				break;
+			case EPlayerState::Idle:
+				ECurrentPlayerState = EPlayerState::Walk;
+			case EPlayerState::Walk:
+				MCharacterMovementComponent->MaxWalkSpeed = MWalkSpeed;
+				break;		
+			case EPlayerState::Sprint:
+				MCharacterMovementComponent->MaxWalkSpeed = MSprintSpeed;
+				break;
+			default:
+				break;
 		}
-		else
-		{
-			MCharacterMovementComponent->MaxWalkSpeed = MWalkSpeed;
-		}	
-		
+
 		const FVector2d movementInput {InputActionValue.Get<FVector2D>()};
 		
 		if (movementInput.Size() > 0)
@@ -134,7 +147,20 @@ void AFirstPersonCharacterController::ActivateMovement(const FInputActionValue& 
 
 void AFirstPersonCharacterController::ActivateSprint(const FInputActionValue& InputActionValue)
 {
-	bIsSprinting = InputActionValue.Get<bool>();
+	if (InputActionValue.Get<bool>())
+	{
+		ECurrentPlayerState = EPlayerState::Sprint;
+	}
+}
+
+void AFirstPersonCharacterController::ActivateCrouch(const FInputActionValue& InputActionValue)
+{
+	if (InputActionValue.Get<bool>())
+	{
+		ECurrentPlayerState = EPlayerState::Crouch;
+
+		AdjustPlayerHeight(GEYES_DEFAULT_HEIGHT / 2);	
+	}
 }
 
 void AFirstPersonCharacterController::Look(const FInputActionValue& InputActionValue)
@@ -155,7 +181,21 @@ void AFirstPersonCharacterController::Look(const FInputActionValue& InputActionV
 	}
 }
 
-void AFirstPersonCharacterController::HeadBob()
+void AFirstPersonCharacterController::DeactivateMovement()
+{
+	ECurrentPlayerState = EPlayerState::Idle;
+	
+	MCharacterMovementComponent->MaxWalkSpeed = GIDLE_SPEED;	
+}
+
+void AFirstPersonCharacterController::DeactivateCrouch()
+{
+	ECurrentPlayerState = EPlayerState::Idle;
+
+	AdjustPlayerHeight(GEYES_DEFAULT_HEIGHT);
+}
+
+void AFirstPersonCharacterController::HeadBob() const
 {
 	if (MCameraComponent)
 	{
@@ -167,14 +207,13 @@ void AFirstPersonCharacterController::HeadBob()
 	}
 }
 
-void AFirstPersonCharacterController::DeactivateWalk()
+void AFirstPersonCharacterController::AdjustPlayerHeight(const float& InNewHeight) const
 {
-	MCharacterMovementComponent->MaxWalkSpeed = GIDLE_SPEED;
-}
-
-void AFirstPersonCharacterController::DeactivateSprint()
-{
-	bIsSprinting = false;
-
-	MCharacterMovementComponent->MaxWalkSpeed = GIDLE_SPEED;
+	const float	capsuleHalfHeight {MCapsuleComponent->GetScaledCapsuleHalfHeight()};
+	
+	MCapsuleComponent->SetCapsuleHalfHeight(InNewHeight);	
+	
+	const FVector3d eyesPosition {0.0, 0.0, MCameraComponent->GetComponentLocation().Z + capsuleHalfHeight + MEyesOffset};
+	
+	MCameraComponent->SetRelativeLocation(eyesPosition);	
 }
