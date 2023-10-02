@@ -33,7 +33,7 @@ namespace
 	constexpr float GCROUCH_HEIGHT {GEYES_DEFAULT_HEIGHT / 2};
 }
 
-AFirstPersonCharacterController::AFirstPersonCharacterController() : MInputMappingContext {nullptr}, MMoveInputAction {nullptr}, MSprintInputAction {nullptr}, MCrouchInputAction {nullptr}, MWalkSpeed {GWALK_SPEED}, MSprintSpeed {GSPRINT_SPEED}, MCrouchSpeed {GCROUCH_SPEED}, MCrouchHeight {GCROUCH_HEIGHT}, MLookSensitivityX {GLOOK_SENSITIVITY_X}, MLookSensitivityY {GLOOK_SENSITIVITY_Y}, MHeadBobFrequency {GHEAD_BOB_FREQUENCY}, MHeadBobAmplitude {GHEAD_BOB_AMPLITUDE}, MCameraComponent {CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"))}, MEyesOffset {}, ECurrentPlayerState {EPlayerState::Idle}, MCharacterMovementComponent {CastChecked<UCharacterMovementComponent>(GetMovementComponent())}, MCapsuleComponent {GetCapsuleComponent()}
+AFirstPersonCharacterController::AFirstPersonCharacterController() : MInputMappingContext {nullptr}, MMoveInputAction {nullptr}, MSprintInputAction {nullptr}, MCrouchInputAction {nullptr}, MWalkSpeed {GWALK_SPEED}, MSprintSpeed {GSPRINT_SPEED}, MCrouchSpeed {GCROUCH_SPEED}, MCrouchHeight {GCROUCH_HEIGHT}, MLookSensitivityX {GLOOK_SENSITIVITY_X}, MLookSensitivityY {GLOOK_SENSITIVITY_Y}, MHeadBobFrequency {GHEAD_BOB_FREQUENCY}, MHeadBobAmplitude {GHEAD_BOB_AMPLITUDE}, MCameraComponent {CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"))}, MEyesOffset {}, MCharacterMovementComponent {CastChecked<UCharacterMovementComponent>(GetMovementComponent())}, MCapsuleComponent {GetCapsuleComponent()}, ECurrentPlayerState {EPlayerState::Idle}
 {
 	PrimaryActorTick.bCanEverTick = true;	
 	
@@ -44,9 +44,15 @@ AFirstPersonCharacterController::AFirstPersonCharacterController() : MInputMappi
 	MCameraComponent->SetupAttachment(GetRootComponent());
 	MCameraComponent->bUsePawnControlRotation = true;
 	
-	AdjustPlayerHeight(GEYES_DEFAULT_HEIGHT);
+	MCapsuleComponent->SetCapsuleHalfHeight(GEYES_DEFAULT_HEIGHT);
+
+	const FVector3d eyesPosition {0.0, 0.0, MCameraComponent->GetComponentLocation().Z + MCapsuleComponent->GetScaledCapsuleHalfHeight() + MEyesOffset};
 	
-	MCharacterMovementComponent->MaxWalkSpeed = GWALK_SPEED;	
+	MCameraComponent->SetRelativeLocation(eyesPosition);	
+	
+	MCharacterMovementComponent->MaxWalkSpeed = GWALK_SPEED;
+	MCharacterMovementComponent->GetNavAgentPropertiesRef().bCanCrouch = true;
+	MCharacterMovementComponent->SetCrouchedHalfHeight(MCrouchHeight + MEyesOffset);
 }
 
 void AFirstPersonCharacterController::BeginPlay()
@@ -113,7 +119,7 @@ void AFirstPersonCharacterController::ActivateWalk(const FInputActionValue& Inpu
 		switch (ECurrentPlayerState)
 		{
 			case EPlayerState::Crouch:
-				MCharacterMovementComponent->MaxWalkSpeed = MCrouchSpeed;
+				MCharacterMovementComponent->MaxWalkSpeedCrouched = MCrouchSpeed;
 				break;
 			case EPlayerState::Idle:
 				ECurrentPlayerState = EPlayerState::Walk;
@@ -164,8 +170,8 @@ void AFirstPersonCharacterController::ActivateCrouch(const FInputActionValue& In
 	if (InputActionValue.Get<bool>())
 	{
 		ECurrentPlayerState = EPlayerState::Crouch;
-
-		AdjustPlayerHeight(GEYES_DEFAULT_HEIGHT / 2);	
+		
+		Crouch();
 	}
 }
 
@@ -208,28 +214,33 @@ void AFirstPersonCharacterController::DeactivateCrouch()
 {
 	ECurrentPlayerState = EPlayerState::Idle;
 
-	AdjustPlayerHeight(GEYES_DEFAULT_HEIGHT);
+	UnCrouch();
 }
 
 void AFirstPersonCharacterController::HeadBob() const
 {
 	if (MCameraComponent)
 	{
-		const double headMovement {MHeadBobAmplitude * FMath::Sin(UGameplayStatics::GetRealTimeSeconds(GetWorld()) * (GHEAD_BOB_FREQUENCY * MCharacterMovementComponent->MaxWalkSpeed))};
+		float speedModifier {};	
+	
+		switch (ECurrentPlayerState)
+		{
+			case EPlayerState::Idle:
+				speedModifier = GIDLE_SPEED;
+				break;
+    		case EPlayerState::Crouch:
+    			speedModifier = MCharacterMovementComponent->MaxWalkSpeedCrouched;
+    			break;
+			default:
+				speedModifier = MCharacterMovementComponent->MaxWalkSpeed;
+				break;
+		}
+	
+		const double headMovement {MHeadBobAmplitude * FMath::Sin(UGameplayStatics::GetRealTimeSeconds(GetWorld()) * (GHEAD_BOB_FREQUENCY * speedModifier))};
+		
 	
 		const FVector3d newCameraPosition {0.0, 0.0, headMovement};	
 		
 		MCameraComponent->SetRelativeLocation(newCameraPosition);
 	}
-}
-
-void AFirstPersonCharacterController::AdjustPlayerHeight(const float& InNewHeight) const
-{
-	const float	capsuleHalfHeight {MCapsuleComponent->GetScaledCapsuleHalfHeight()};
-	
-	MCapsuleComponent->SetCapsuleHalfHeight(InNewHeight);	
-	
-	const FVector3d eyesPosition {0.0, 0.0, MCameraComponent->GetComponentLocation().Z + capsuleHalfHeight + MEyesOffset};
-	
-	MCameraComponent->SetRelativeLocation(eyesPosition);
 }

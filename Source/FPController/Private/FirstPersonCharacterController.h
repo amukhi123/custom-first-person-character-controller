@@ -105,6 +105,4 @@ private:
 	void DeactivateCrouch();
 	
 	void HeadBob() const;
-	
-	void AdjustPlayerHeight(const float& InNewHeight) const;
 };
