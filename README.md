@@ -2,7 +2,7 @@
 
 ## Description
 
- A custom first-person character controller built in Unreal Engine 5.3 that features slope movement, vaulting, walking, looking, jumping, crouching, sprinting and head bobbing.
+ A custom first-person character controller built in Unreal Engine 5.3 that features slope movement, dynamic footsteps, walking, looking, jumping, crouching, sprinting and head bobbing.
 
  All properties can be customized in the blueprint, "BP_FPController" located in Content/Blueprints/BP_FPController.
 
@@ -15,7 +15,6 @@ WASD - Movement
 <br>Left Shift - Sprint
 <br>Space Bar - Jump
 <br>Left Control - Crouch
-<br>E - Vault
 
 ## Gallery
 
@@ -38,3 +37,4 @@ Made using C++, Unreal Engine and git.
 ## Resources
 
 [Super Grid](https://www.unrealengine.com/marketplace/en-US/product/supergrid-starter-pack)
+[Footstep Sounds](https://opengameart.org/content/foot-walking-step-sounds-on-stone-water-snow-wood-and-dirt)

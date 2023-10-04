@@ -6,34 +6,38 @@
 #include "Camera/CameraComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Math/RotationMatrix.h"
+#include "Math/Vector.h"
 #include "Kismet/GameplayStatics.h"
+#include "Engine/World.h"
+#include "CollisionQueryParams.h"
+#include "Sound/SoundWave.h"
 
 namespace
 {
 	// Movement	
 	// The average walking speed is 5 km/h or 138.889 cm/s
-	constexpr float GWALK_SPEED {138.889f};
+	constexpr float GWalkSpeed {138.889f};
 	// The average sprinting speed for a human male is 31.414395 km/h or 872.62208 cm/s	
-	constexpr float GSPRINT_SPEED {872.62208f};
+	constexpr float GSprintSpeed {872.62208f};
 	// Crouch walking is 62.5% slower than walking on average
-	constexpr float GCROUCH_SPEED {52.083375f};
+	constexpr float GCrouchSpeed {52.083375f};
 	// Used for head bobbing when idle	
-	constexpr float GIDLE_SPEED {30.f};
+	constexpr float GIdleSpeed {30.f};
 	
 	// Look	
-	constexpr float GLOOK_SENSITIVITY_X {1.f};
-	constexpr float GLOOK_SENSITIVITY_Y {1.f};
-	constexpr float GEYES_DEFAULT_HEIGHT {160.f};	
+	constexpr float GLookSensitivityX {1.f};
+	constexpr float GLookSensitivityY {1.f};
+	constexpr float GEyesHeight {160.f};	
 	
 	// Head Bob	
-	constexpr float GHEAD_BOB_AMPLITUDE {5.f};
-	constexpr float GHEAD_BOB_FREQUENCY {.025f};
+	constexpr float GHeadBobAmplitude {5.f};
+	constexpr float GHeadBobFrequency {.025f};
 	
 	// Crouch
-	constexpr float GCROUCH_HEIGHT {GEYES_DEFAULT_HEIGHT / 2};
+	constexpr float GCrouchHeight {GEyesHeight / 2};
 }
 
-AFirstPersonCharacterController::AFirstPersonCharacterController() : MInputMappingContext {nullptr}, MMoveInputAction {nullptr}, MSprintInputAction {nullptr}, MCrouchInputAction {nullptr}, MWalkSpeed {GWALK_SPEED}, MSprintSpeed {GSPRINT_SPEED}, MCrouchSpeed {GCROUCH_SPEED}, MCrouchHeight {GCROUCH_HEIGHT}, MLookSensitivityX {GLOOK_SENSITIVITY_X}, MLookSensitivityY {GLOOK_SENSITIVITY_Y}, MHeadBobFrequency {GHEAD_BOB_FREQUENCY}, MHeadBobAmplitude {GHEAD_BOB_AMPLITUDE}, MCameraComponent {CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"))}, MEyesOffset {}, MCharacterMovementComponent {CastChecked<UCharacterMovementComponent>(GetMovementComponent())}, MCapsuleComponent {GetCapsuleComponent()}, ECurrentPlayerState {EPlayerState::Idle}
+AFirstPersonCharacterController::AFirstPersonCharacterController() : MInputMappingContext {nullptr}, MMoveInputAction {}, MSprintInputAction {}, MCrouchInputAction {}, MWalkSpeed {GWalkSpeed}, MSprintSpeed {GSprintSpeed}, MCrouchSpeed {GCrouchSpeed}, MCrouchHeight {GCrouchHeight}, MLookSensitivityX {GLookSensitivityX}, MLookSensitivityY {GLookSensitivityY}, MHeadBobFrequency {GHeadBobFrequency}, MHeadBobAmplitude {GHeadBobAmplitude}, MCameraComponent {CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"))}, MEyesOffset {}, MGrass {}, MStone {}, MStoneWalkSoundEffect {}, MGrassWalkSoundEffect {}, MCharacterMovementComponent {CastChecked<UCharacterMovementComponent>(GetMovementComponent())}, MCapsuleComponent {GetCapsuleComponent()}, ECurrentPlayerState {EPlayerState::Idle}, MIsPlayingSound {}
 {
 	PrimaryActorTick.bCanEverTick = true;	
 	
@@ -44,13 +48,13 @@ AFirstPersonCharacterController::AFirstPersonCharacterController() : MInputMappi
 	MCameraComponent->SetupAttachment(GetRootComponent());
 	MCameraComponent->bUsePawnControlRotation = true;
 	
-	MCapsuleComponent->SetCapsuleHalfHeight(GEYES_DEFAULT_HEIGHT);
+	MCapsuleComponent->SetCapsuleHalfHeight(GEyesHeight);
 
-	const FVector3d eyesPosition {0.0, 0.0, MCameraComponent->GetComponentLocation().Z + MCapsuleComponent->GetScaledCapsuleHalfHeight() + MEyesOffset};
+	const FVector3d EyesPosition {0.0, 0.0, MCameraComponent->GetComponentLocation().Z + MCapsuleComponent->GetScaledCapsuleHalfHeight() + MEyesOffset};
 	
-	MCameraComponent->SetRelativeLocation(eyesPosition);	
+	MCameraComponent->SetRelativeLocation(EyesPosition);	
 	
-	MCharacterMovementComponent->MaxWalkSpeed = GWALK_SPEED;
+	MCharacterMovementComponent->MaxWalkSpeed = GWalkSpeed;
 	MCharacterMovementComponent->GetNavAgentPropertiesRef().bCanCrouch = true;
 	MCharacterMovementComponent->SetCrouchedHalfHeight(MCrouchHeight + MEyesOffset);
 }
@@ -59,13 +63,13 @@ void AFirstPersonCharacterController::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	if (const TObjectPtr<APlayerController> playerController {Cast<APlayerController>(GetController())})
+	if (const TObjectPtr<const APlayerController> PlayerController {Cast<APlayerController>(GetController())})
 	{
-		if (TObjectPtr<UEnhancedInputLocalPlayerSubsystem> localPlayerSubsystem {ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(playerController->GetLocalPlayer())})
+		if (const TObjectPtr<UEnhancedInputLocalPlayerSubsystem> LocalPlayerSubsystem {ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer())})
 		{
 			if (MInputMappingContext)
 			{
-				localPlayerSubsystem->AddMappingContext(MInputMappingContext, 0);	
+				LocalPlayerSubsystem->AddMappingContext(MInputMappingContext, 0);	
 			}
 		}
 	}
@@ -80,41 +84,41 @@ void AFirstPersonCharacterController::SetupPlayerInputComponent(UInputComponent*
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
-	if (TObjectPtr<UEnhancedInputComponent> enhancedInputComponent {CastChecked<UEnhancedInputComponent>(PlayerInputComponent)})
+	if (const TObjectPtr<UEnhancedInputComponent> EnhancedInputComponent {CastChecked<UEnhancedInputComponent>(PlayerInputComponent)})
 	{
 		if (MMoveInputAction)
 		{
-			enhancedInputComponent->BindAction(MMoveInputAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacterController::ActivateWalk);			enhancedInputComponent->BindAction(MMoveInputAction, ETriggerEvent::Completed, this, &AFirstPersonCharacterController::DeactivateMovement);
+			EnhancedInputComponent->BindAction(MMoveInputAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacterController::ActivateMovement);			EnhancedInputComponent->BindAction(MMoveInputAction, ETriggerEvent::Completed, this, &AFirstPersonCharacterController::DeactivateMovement);
 		}
 
 		if (MLookInputAction)
 		{
-			enhancedInputComponent->BindAction(MLookInputAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacterController::Look);
+			EnhancedInputComponent->BindAction(MLookInputAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacterController::Look);
 		}
 		
 		if (MSprintInputAction)
 		{
-			enhancedInputComponent->BindAction(MSprintInputAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacterController::ActivateSprint);
-			enhancedInputComponent->BindAction(MSprintInputAction, ETriggerEvent::Completed, this, &AFirstPersonCharacterController::DeactivateMovement);
+			EnhancedInputComponent->BindAction(MSprintInputAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacterController::ActivateSprint);
+			EnhancedInputComponent->BindAction(MSprintInputAction, ETriggerEvent::Completed, this, &AFirstPersonCharacterController::DeactivateMovement);
 		}
 
 		if (MCrouchInputAction)
 		{
-			enhancedInputComponent->BindAction(MCrouchInputAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacterController::ActivateCrouch);
-			enhancedInputComponent->BindAction(MCrouchInputAction, ETriggerEvent::Completed, this, &AFirstPersonCharacterController::DeactivateCrouch);
+			EnhancedInputComponent->BindAction(MCrouchInputAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacterController::ActivateCrouch);
+			EnhancedInputComponent->BindAction(MCrouchInputAction, ETriggerEvent::Completed, this, &AFirstPersonCharacterController::DeactivateCrouch);
 		}
 		
 		if (MJumpInputAction)
 		{
-			enhancedInputComponent->BindAction(MJumpInputAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacterController::ActivateJump);
-			enhancedInputComponent->BindAction(MJumpInputAction, ETriggerEvent::Completed, this, &AFirstPersonCharacterController::DeactivateMovement);
+			EnhancedInputComponent->BindAction(MJumpInputAction, ETriggerEvent::Triggered, this, &AFirstPersonCharacterController::ActivateJump);
+			EnhancedInputComponent->BindAction(MJumpInputAction, ETriggerEvent::Completed, this, &AFirstPersonCharacterController::DeactivateMovement);
 		}
 	}
 }
 
-void AFirstPersonCharacterController::ActivateWalk(const FInputActionValue& InputActionValue)
+void AFirstPersonCharacterController::ActivateMovement(const FInputActionValue& InInputActionValue)
 {
-	if (GetController() && InputActionValue.GetValueType() == EInputActionValueType::Axis2D)
+	if (GetController() && InInputActionValue.GetValueType() == EInputActionValueType::Axis2D)
 	{
 		switch (ECurrentPlayerState)
 		{
@@ -132,42 +136,43 @@ void AFirstPersonCharacterController::ActivateWalk(const FInputActionValue& Inpu
 			default:
 				break;
 		}
-
-		const FVector2d movementInput {InputActionValue.Get<FVector2D>()};
 		
-		if (movementInput.Size() > 0)
+		const FVector2d MovementInput {InInputActionValue.Get<FVector2D>()};
+		
+		if (MovementInput.Size() > 0)
 		{
-			const FRotator yawRotation {0.0, GetControlRotation().Yaw, 0.0};
+			const FRotator YawRotation {0.0, GetControlRotation().Yaw, 0.0};
 
-
-			if (movementInput.X != 0)
+			if (MovementInput.X != 0)
 			{
-				const FVector3d forwardDirection {FRotationMatrix(yawRotation).GetUnitAxis(EAxis::X)};
+				const FVector3d ForwardDirection {FRotationMatrix(YawRotation).GetUnitAxis(EAxis::X)};
 				
-				AddMovementInput(forwardDirection, movementInput.X);
+				AddMovementInput(ForwardDirection, MovementInput.X);
 			}
     
-			if (movementInput.Y != 0)
+			if (MovementInput.Y != 0)
 			{
-				const FVector3d rightDirection {FRotationMatrix(yawRotation).GetUnitAxis(EAxis::Y)};
+				const FVector3d RightDirection {FRotationMatrix(YawRotation).GetUnitAxis(EAxis::Y)};
 			
-				AddMovementInput(rightDirection, movementInput.Y);
+				AddMovementInput(RightDirection, MovementInput.Y);
 			}
+			
+			PlaySoundHelper(ECurrentPlayerState);	
 		}
 	}
 }
 
-void AFirstPersonCharacterController::ActivateSprint(const FInputActionValue& InputActionValue)
+void AFirstPersonCharacterController::ActivateSprint(const FInputActionValue& InInputActionValue)
 {
-	if (InputActionValue.Get<bool>())
+	if (InInputActionValue.Get<bool>())
 	{
 		ECurrentPlayerState = EPlayerState::Sprint;
 	}
 }
 
-void AFirstPersonCharacterController::ActivateCrouch(const FInputActionValue& InputActionValue)
+void AFirstPersonCharacterController::ActivateCrouch(const FInputActionValue& InInputActionValue)
 {
-	if (InputActionValue.Get<bool>())
+	if (InInputActionValue.Get<bool>())
 	{
 		ECurrentPlayerState = EPlayerState::Crouch;
 		
@@ -185,20 +190,20 @@ void AFirstPersonCharacterController::ActivateJump(const FInputActionValue& InIn
 	}
 }
 
-void AFirstPersonCharacterController::Look(const FInputActionValue& InputActionValue)
+void AFirstPersonCharacterController::Look(const FInputActionValue& InInputActionValue)
 {
 	if (GetController())
 	{
-		const FVector2D rotationInput {InputActionValue.Get<FVector2D>()};
+		const FVector2D RotationInput {InInputActionValue.Get<FVector2D>()};
 
-		if (rotationInput.Y != 0)
+		if (RotationInput.Y != 0)
 		{
-			AddControllerPitchInput(rotationInput.Y * GLOOK_SENSITIVITY_Y);
+			AddControllerPitchInput(RotationInput.Y * GLookSensitivityY);
 		}
 		
-		if (rotationInput.X != 0)
+		if (RotationInput.X != 0)
 		{
-			AddControllerYawInput(rotationInput.X * GLOOK_SENSITIVITY_X);
+			AddControllerYawInput(RotationInput.X * GLookSensitivityX);
 		}
 	}
 }
@@ -207,7 +212,7 @@ void AFirstPersonCharacterController::DeactivateMovement()
 {
 	ECurrentPlayerState = EPlayerState::Idle;
 	
-	MCharacterMovementComponent->MaxWalkSpeed = GIDLE_SPEED;	
+	MCharacterMovementComponent->MaxWalkSpeed = GIdleSpeed;	
 }
 
 void AFirstPersonCharacterController::DeactivateCrouch()
@@ -221,26 +226,110 @@ void AFirstPersonCharacterController::HeadBob() const
 {
 	if (MCameraComponent)
 	{
-		float speedModifier {};	
+		float SpeedModifier {};	
 	
 		switch (ECurrentPlayerState)
 		{
 			case EPlayerState::Idle:
-				speedModifier = GIDLE_SPEED;
+				SpeedModifier = GIdleSpeed;
 				break;
     		case EPlayerState::Crouch:
-    			speedModifier = MCharacterMovementComponent->MaxWalkSpeedCrouched;
+    			SpeedModifier = MCharacterMovementComponent->MaxWalkSpeedCrouched;
     			break;
 			default:
-				speedModifier = MCharacterMovementComponent->MaxWalkSpeed;
+				SpeedModifier = MCharacterMovementComponent->MaxWalkSpeed;
 				break;
 		}
 	
-		const double headMovement {MHeadBobAmplitude * FMath::Sin(UGameplayStatics::GetRealTimeSeconds(GetWorld()) * (GHEAD_BOB_FREQUENCY * speedModifier))};
-		
+		const double HeadMovementOffset {MHeadBobAmplitude * FMath::Sin(UGameplayStatics::GetRealTimeSeconds(GetWorld()) * (GHeadBobFrequency * SpeedModifier))};
 	
-		const FVector3d newCameraPosition {0.0, 0.0, headMovement};	
+		const FVector3d NewCameraPosition {0.0, 0.0, HeadMovementOffset};	
 		
-		MCameraComponent->SetRelativeLocation(newCameraPosition);
+		MCameraComponent->SetRelativeLocation(NewCameraPosition);
 	}
+}
+
+void AFirstPersonCharacterController::PlaySound()
+{
+	const TWeakObjectPtr ValidPhysicalMaterial {CheckSurface()};
+	
+	if (ValidPhysicalMaterial.IsValid())
+	{
+		if (const TObjectPtr<const UPhysicalMaterial> HitPhysicalMaterial {ValidPhysicalMaterial.Get()})
+		{
+			if (HitPhysicalMaterial->SurfaceType == MGrass->PhysMaterial->SurfaceType)
+			{
+				const TObjectPtr<USoundBase> GrassFootstepSoundEffect {CastChecked<USoundBase>(MGrassWalkSoundEffect)};
+    		
+				UGameplayStatics::PlaySoundAtLocation(this, GrassFootstepSoundEffect, GetActorLocation(), GetControlRotation());
+			}
+			else if (HitPhysicalMaterial->SurfaceType == MStone->PhysMaterial->SurfaceType)
+			{
+				const TObjectPtr<USoundBase> StoneFootstepSoundEffect {CastChecked<USoundBase>(MStoneWalkSoundEffect)};
+    		
+				UGameplayStatics::PlaySoundAtLocation(this, StoneFootstepSoundEffect, GetActorLocation(), GetControlRotation());
+			}
+		}
+	}
+
+	if (MIsPlayingSound)
+	{
+		MIsPlayingSound = false;
+	}
+}
+
+TWeakObjectPtr<UPhysicalMaterial> AFirstPersonCharacterController::CheckSurface() const
+{
+	if (const TObjectPtr<const UWorld> World {GetWorld()})
+	{
+		FHitResult HitResult {};
+
+		FCollisionQueryParams CollisionQueryParams {};
+
+		CollisionQueryParams.AddIgnoredActor(this);
+		CollisionQueryParams.bReturnPhysicalMaterial = true;
+		
+		constexpr float DownVectorMultiplier {1000.f};	
+	
+		World->LineTraceSingleByChannel(HitResult, GetActorLocation(), FVector3d::DownVector * DownVectorMultiplier, ECC_WorldStatic, CollisionQueryParams);
+
+		return HitResult.PhysMaterial;
+	}
+
+	return nullptr;
+}
+
+void AFirstPersonCharacterController::PlaySoundHelper(const EPlayerState& InPlayerState)
+{
+	constexpr float CrouchSoundDelay {1.1f};	
+	constexpr float SprintSoundDelay {.15f};	
+	constexpr float WalkSoundDelay {.75f};	
+	constexpr float DefaultSoundDelay {0.f};	
+	
+	float SoundDelay {};
+
+	switch (InPlayerState)
+	{
+    	case EPlayerState::Crouch:
+    		SoundDelay = CrouchSoundDelay;
+    		break;
+    	case EPlayerState::Walk:
+    		SoundDelay = WalkSoundDelay;
+    		break;
+    	case EPlayerState::Sprint:
+    		SoundDelay = SprintSoundDelay;
+    		break;
+    	default:
+    		SoundDelay = DefaultSoundDelay;
+    		break;
+	}
+	
+	if (MIsPlayingSound == false && SoundDelay != DefaultSoundDelay)
+	{
+		MIsPlayingSound = true;
+		
+		FTimerHandle SoundHandle {};
+		
+		GetWorldTimerManager().SetTimer(SoundHandle, this, &AFirstPersonCharacterController::PlaySound, SoundDelay, false);
+	}	
 }
