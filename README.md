@@ -37,4 +37,4 @@ Made using C++, Unreal Engine and git.
 ## Resources
 
 [Super Grid](https://www.unrealengine.com/marketplace/en-US/product/supergrid-starter-pack)
-[Footstep Sounds](https://opengameart.org/content/foot-walking-step-sounds-on-stone-water-snow-wood-and-dirt)
+<br>[Footstep Sounds](https://opengameart.org/content/foot-walking-step-sounds-on-stone-water-snow-wood-and-dirt)
