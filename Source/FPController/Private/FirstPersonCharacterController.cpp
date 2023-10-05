@@ -259,15 +259,17 @@ void AFirstPersonCharacterController::PlaySound()
 		{
 			if (HitPhysicalMaterial->SurfaceType == MGrass->PhysMaterial->SurfaceType)
 			{
-				const TObjectPtr<USoundBase> GrassFootstepSoundEffect {CastChecked<USoundBase>(MGrassWalkSoundEffect)};
-    		
-				UGameplayStatics::PlaySoundAtLocation(this, GrassFootstepSoundEffect, GetActorLocation(), GetControlRotation());
+				if (const TObjectPtr<USoundBase> GrassFootstepSoundEffect {CastChecked<USoundBase>(MGrassWalkSoundEffect)})
+				{
+					UGameplayStatics::PlaySoundAtLocation(this, GrassFootstepSoundEffect, GetActorLocation(), GetControlRotation());
+				}
 			}
 			else if (HitPhysicalMaterial->SurfaceType == MStone->PhysMaterial->SurfaceType)
 			{
-				const TObjectPtr<USoundBase> StoneFootstepSoundEffect {CastChecked<USoundBase>(MStoneWalkSoundEffect)};
-    		
-				UGameplayStatics::PlaySoundAtLocation(this, StoneFootstepSoundEffect, GetActorLocation(), GetControlRotation());
+				if (const TObjectPtr<USoundBase> StoneFootstepSoundEffect {CastChecked<USoundBase>(MStoneWalkSoundEffect)})
+				{
+					UGameplayStatics::PlaySoundAtLocation(this, StoneFootstepSoundEffect, GetActorLocation(), GetControlRotation());
+				}
 			}
 		}
 	}
