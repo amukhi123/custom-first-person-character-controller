@@ -32,11 +32,11 @@ WASD - Movement
 4. Right-click AssetActions -> Migrate...
 5. In the file explorer navigate to the Content folder of your project and click "Select Folder"
 
-If you would like to see the custom first-person character controller in action you can download the lastest release (fp-controller-1.0.0.zip). Then run "FPController.exe".
+If you would like to see the custom first-person character controller in action you can download the latest release (fp-controller-1.0.0.zip). Then run "FPController.exe".
 
 ## Tech Stack
 
-Made using C++, Unreal Engine and git.
+Made using C++, Unreal Engine and Git.
 
 ## Resources
 
